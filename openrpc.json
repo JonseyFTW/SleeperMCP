@@ -1,0 +1,442 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "MCP Sleeper Fantasy Football API",
+    "description": "Model Context Protocol server providing JSON-RPC 2.0 access to Sleeper Fantasy Football API. This server wraps all Sleeper API endpoints and provides caching, rate limiting, and comprehensive documentation for LLM tool integration.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support",
+      "email": "support@example.com",
+      "url": "https://github.com/yourusername/mcp-sleeper-server"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "name": "Production",
+      "url": "https://api.example.com/rpc",
+      "description": "Production MCP server"
+    },
+    {
+      "name": "Local Development",
+      "url": "http://localhost:8080/rpc",
+      "description": "Local development server"
+    }
+  ],
+  "methods": [
+    {
+      "name": "sleeper.getUserByUsername",
+      "summary": "Get user by username",
+      "description": "Retrieves user information from Sleeper by their username",
+      "params": [
+        {
+          "name": "username",
+          "description": "Sleeper username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ],
+      "result": {
+        "name": "user",
+        "description": "User object containing profile information",
+        "schema": {
+          "$ref": "#/components/schemas/User"
+        }
+      },
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidParams"
+        },
+        {
+          "$ref": "#/components/errors/NotFound"
+        }
+      ],
+      "examples": [
+        {
+          "name": "Successful request",
+          "params": [
+            {
+              "name": "username",
+              "value": "example_user"
+            }
+          ],
+          "result": {
+            "name": "user",
+            "value": {
+              "user_id": "12345678",
+              "username": "example_user",
+              "display_name": "Example User",
+              "avatar": "avatar123"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "sleeper.getLeaguesForUser",
+      "summary": "Get leagues for user",
+      "description": "Retrieves all leagues a user is participating in for a given sport and season",
+      "params": [
+        {
+          "name": "userId",
+          "description": "Sleeper user ID",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        {
+          "name": "sport",
+          "description": "Sport type",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "default": "nfl",
+            "enum": ["nfl", "nba", "mlb"]
+          }
+        },
+        {
+          "name": "season",
+          "description": "Season year (e.g., 2024)",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^\\d{4}$"
+          }
+        }
+      ],
+      "result": {
+        "name": "leagues",
+        "description": "Array of league objects",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/League"
+          }
+        }
+      }
+    },
+    {
+      "name": "sleeper.getMatchups",
+      "summary": "Get matchups for week",
+      "description": "Retrieves all matchups for a specific week in a league",
+      "params": [
+        {
+          "name": "leagueId",
+          "description": "League ID",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "week",
+          "description": "Week number (1-18 for regular season and playoffs)",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 18
+          }
+        }
+      ],
+      "result": {
+        "name": "matchups",
+        "description": "Array of matchup objects",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Matchup"
+          }
+        }
+      }
+    },
+    {
+      "name": "sleeper.getAllPlayers",
+      "summary": "Get all players",
+      "description": "Retrieves complete player database for a sport. This endpoint returns a large dataset and is heavily cached.",
+      "params": [
+        {
+          "name": "sport",
+          "description": "Sport type",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "default": "nfl"
+          }
+        }
+      ],
+      "result": {
+        "name": "players",
+        "description": "Object with player IDs as keys and player objects as values",
+        "schema": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/components/schemas/Player"
+          }
+        }
+      }
+    },
+    {
+      "name": "sleeper.getTrendingPlayers",
+      "summary": "Get trending players",
+      "description": "Retrieves players that are trending up (adds) or down (drops) based on roster activity",
+      "params": [
+        {
+          "name": "sport",
+          "description": "Sport type",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "default": "nfl"
+          }
+        },
+        {
+          "name": "type",
+          "description": "Trending type",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": ["add", "drop"],
+            "default": "add"
+          }
+        },
+        {
+          "name": "lookback",
+          "description": "Number of hours to look back (1-48)",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 48
+          }
+        },
+        {
+          "name": "limit",
+          "description": "Maximum number of results (1-200)",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        }
+      ],
+      "result": {
+        "name": "trendingPlayers",
+        "description": "Array of trending player objects with activity counts",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "player_id": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "sleeper.getNFLState",
+      "summary": "Get NFL state",
+      "description": "Retrieves current NFL state including week, season, and important dates",
+      "params": [],
+      "result": {
+        "name": "state",
+        "description": "NFL state object",
+        "schema": {
+          "$ref": "#/components/schemas/NFLState"
+        }
+      }
+    }
+  ],
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Unique user identifier"
+          },
+          "username": {
+            "type": "string",
+            "description": "User's username"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "User's display name"
+          },
+          "avatar": {
+            "type": "string",
+            "description": "Avatar ID"
+          }
+        }
+      },
+      "League": {
+        "type": "object",
+        "properties": {
+          "league_id": {
+            "type": "string",
+            "description": "Unique league identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "League name"
+          },
+          "season": {
+            "type": "string",
+            "description": "Season year"
+          },
+          "sport": {
+            "type": "string",
+            "description": "Sport type"
+          },
+          "roster_positions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Available roster positions"
+          },
+          "settings": {
+            "type": "object",
+            "description": "League settings"
+          }
+        }
+      },
+      "Matchup": {
+        "type": "object",
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "description": "Roster ID"
+          },
+          "matchup_id": {
+            "type": "integer",
+            "description": "Matchup identifier"
+          },
+          "points": {
+            "type": "number",
+            "description": "Total points scored"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of player IDs"
+          },
+          "starters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of starting player IDs"
+          }
+        }
+      },
+      "Player": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "description": "Unique player identifier"
+          },
+          "first_name": {
+            "type": "string",
+            "description": "Player's first name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Player's last name"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "Player's full name"
+          },
+          "team": {
+            "type": "string",
+            "description": "NFL team abbreviation"
+          },
+          "position": {
+            "type": "string",
+            "description": "Player position"
+          },
+          "status": {
+            "type": "string",
+            "description": "Player status (Active, Injured, etc.)"
+          }
+        }
+      },
+      "NFLState": {
+        "type": "object",
+        "properties": {
+          "week": {
+            "type": "integer",
+            "description": "Current NFL week"
+          },
+          "season": {
+            "type": "string",
+            "description": "Current season year"
+          },
+          "season_type": {
+            "type": "string",
+            "description": "Season type (pre, regular, post)"
+          },
+          "season_start_date": {
+            "type": "string",
+            "description": "Season start date"
+          },
+          "leg": {
+            "type": "integer",
+            "description": "Current leg of playoffs"
+          }
+        }
+      }
+    },
+    "errors": {
+      "InvalidParams": {
+        "code": -32602,
+        "message": "Invalid parameters",
+        "data": {
+          "type": "object",
+          "description": "Details about validation errors"
+        }
+      },
+      "NotFound": {
+        "code": -32001,
+        "message": "Resource not found",
+        "data": {
+          "type": "object",
+          "description": "Details about the missing resource"
+        }
+      },
+      "RateLimitExceeded": {
+        "code": -32003,
+        "message": "Rate limit exceeded",
+        "data": {
+          "type": "object",
+          "properties": {
+            "retryAfter": {
+              "type": "integer",
+              "description": "Seconds until rate limit resets"
+            }
+          }
+        }
+      }
+    }
+  }
+}
