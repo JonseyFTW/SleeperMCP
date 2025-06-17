@@ -11,35 +11,21 @@ export async function initializeCache(): Promise<void> {
   }
 
   try {
-    // Use REDIS_URL if available, otherwise use individual config values
-    if (config.REDIS_URL) {
-      logger.info(`Connecting to Redis using URL: ${config.REDIS_URL.replace(/:[^:@]*@/, ':****@')}`);
-      redisClient = new Redis(config.REDIS_URL, {
-        retryStrategy: (times: number) => {
-          const delay = Math.min(times * 50, 2000);
-          logger.warn(`Redis connection attempt ${times}, retrying in ${delay}ms`);
-          return delay;
-        },
-        maxRetriesPerRequest: 3,
-        enableReadyCheck: true,
-        connectTimeout: 10000,
-      });
-    } else {
-      logger.info(`Connecting to Redis using host: ${config.REDIS_HOST}:${config.REDIS_PORT}`);
-      redisClient = new Redis({
-        host: config.REDIS_HOST,
-        port: config.REDIS_PORT,
-        password: config.REDIS_PASSWORD,
-        retryStrategy: (times: number) => {
-          const delay = Math.min(times * 50, 2000);
-          logger.warn(`Redis connection attempt ${times}, retrying in ${delay}ms`);
-          return delay;
-        },
-        maxRetriesPerRequest: 3,
-        enableReadyCheck: true,
-        connectTimeout: 10000,
-      });
-    }
+    logger.info(`Redis config - HOST: ${config.REDIS_HOST}, PORT: ${config.REDIS_PORT}, PASSWORD: ${config.REDIS_PASSWORD ? 'SET' : 'NOT SET'}`);
+    
+    redisClient = new Redis({
+      host: config.REDIS_HOST,
+      port: config.REDIS_PORT,
+      password: config.REDIS_PASSWORD,
+      retryStrategy: (times: number) => {
+        const delay = Math.min(times * 50, 2000);
+        logger.warn(`Redis connection attempt ${times}, retrying in ${delay}ms`);
+        return delay;
+      },
+      maxRetriesPerRequest: 3,
+      enableReadyCheck: true,
+      connectTimeout: 10000,
+    });
 
     redisClient.on('connect', () => {
       logger.info('Redis client connected');
