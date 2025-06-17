@@ -1,6 +1,5 @@
 import axios from 'axios';
 import csv from 'csv-parser';
-import { Readable } from 'stream';
 import { analyticsDB } from './database';
 import { sleeperAPI } from '../api/client';
 import { logger } from '../utils/logger';
@@ -330,7 +329,7 @@ export class DataIngestionService {
       for (let i = 0; i < playerEntries.length; i += batchSize) {
         const batch = playerEntries.slice(i, i + batchSize);
         
-        await analyticsDB.transaction(async (client) => {
+        await analyticsDB.transaction(async (_client) => {
           for (const [sleeperId, playerData] of batch) {
             try {
               const normalizedPlayer = this.normalizeSleeperPlayer(sleeperId, playerData);

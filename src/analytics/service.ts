@@ -154,8 +154,8 @@ export class AnalyticsService {
       }
 
       const games = historicalMatchups.rows;
-      const avgFantasyPoints = games.reduce((sum, g) => sum + g.fantasy_points, 0) / games.length;
-      const avgTotalYards = games.reduce((sum, g) => 
+      const avgFantasyPoints = games.reduce((sum: number, g: any) => sum + g.fantasy_points, 0) / games.length;
+      const avgTotalYards = games.reduce((sum: number, g: any) => 
         sum + (g.passing_yards || 0) + (g.rushing_yards || 0) + (g.receiving_yards || 0), 0
       ) / games.length;
 
@@ -165,8 +165,8 @@ export class AnalyticsService {
         historical_games: games.length,
         avg_fantasy_points: Math.round(avgFantasyPoints * 100) / 100,
         avg_total_yards: Math.round(avgTotalYards),
-        best_game: Math.max(...games.map(g => g.fantasy_points)),
-        worst_game: Math.min(...games.map(g => g.fantasy_points)),
+        best_game: Math.max(...games.map((g: any) => g.fantasy_points)),
+        worst_game: Math.min(...games.map((g: any) => g.fantasy_points)),
         recommendation: this.generateMatchupRecommendation(avgFantasyPoints, games),
         recent_games: games.slice(0, 3)
       };
@@ -224,7 +224,7 @@ export class AnalyticsService {
   private async getPositionRank(playerId: string, position: string): Promise<number> {
     const leaders = await analyticsDB.getCurrentSeasonLeaders(position, 200);
     const playerIndex = leaders.findIndex(p => p.player_id === playerId);
-    return playerIndex >= 0 ? playerIndex + 1 : null;
+    return playerIndex >= 0 ? playerIndex + 1 : 0;
   }
 
   private calculateProjectionConfidence(games: any[]): number {

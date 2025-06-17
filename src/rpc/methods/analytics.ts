@@ -62,7 +62,7 @@ export async function getMatchupAnalysis(params: any[], _context: any) {
  * Get top performers by position for a given timeframe
  */
 export async function getTopPerformers(params: any[], _context: any) {
-  const { position, limit = 20, timeframe = 'season' } = params[0] || {};
+  const { position, limit: _limit = 20, timeframe: _timeframe = 'season' } = params[0] || {};
   
   logger.info(`Getting top performers for position ${position || 'all'}`);
   return analyticsService.getPositionAnalytics(position, undefined);
@@ -187,7 +187,7 @@ export async function ingestHistoricalData(params: any[], _context: any) {
 /**
  * Update current player data from Sleeper API
  */
-export async function updateCurrentPlayerData(params: any[], _context: any) {
+export async function updateCurrentPlayerData(_params: any[], _context: any) {
   logger.info('Starting current player data update');
   
   try {
@@ -206,7 +206,7 @@ export async function updateCurrentPlayerData(params: any[], _context: any) {
 /**
  * Run complete daily data sync
  */
-export async function runDailyDataSync(params: any[], _context: any) {
+export async function runDailyDataSync(_params: any[], _context: any) {
   logger.info('Starting daily data sync');
   
   try {
@@ -225,7 +225,7 @@ export async function runDailyDataSync(params: any[], _context: any) {
 /**
  * Run nightly delta sync to check for new data
  */
-export async function runNightlyDeltaSync(params: any[], _context: any) {
+export async function runNightlyDeltaSync(_params: any[], _context: any): Promise<any> {
   logger.info('Starting nightly delta sync');
   
   try {
@@ -247,7 +247,7 @@ export async function runNightlyDeltaSync(params: any[], _context: any) {
 /**
  * Get sync status and statistics
  */
-export async function getSyncStatus(params: any[], _context: any) {
+export async function getSyncStatus(_params: any[], _context: any) {
   logger.info('Getting sync status');
   
   try {
@@ -266,7 +266,7 @@ export async function getSyncStatus(params: any[], _context: any) {
 /**
  * Force a delta sync (for testing or manual triggers)
  */
-export async function forceDeltaSync(params: any[], _context: any) {
+export async function forceDeltaSync(_params: any[], _context: any): Promise<any> {
   logger.info('Forcing delta sync');
   
   try {
