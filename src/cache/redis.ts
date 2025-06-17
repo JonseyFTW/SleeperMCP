@@ -17,6 +17,7 @@ export async function initializeCache(): Promise<void> {
       host: config.REDIS_HOST,
       port: config.REDIS_PORT,
       password: config.REDIS_PASSWORD,
+      family: 0, // Enable dual-stack (IPv4 + IPv6) lookup for Railway compatibility
       retryStrategy: (times: number) => {
         const delay = Math.min(times * 50, 2000);
         logger.warn(`Redis connection attempt ${times}, retrying in ${delay}ms`);
