@@ -8,16 +8,28 @@ export class AnalyticsDatabase {
   private pool: Pool;
 
   constructor() {
-    this.pool = new Pool({
-      host: config.POSTGRES_HOST || 'localhost',
-      port: config.POSTGRES_PORT || 5432,
-      database: config.POSTGRES_DB || 'sleeper_analytics',
-      user: config.POSTGRES_USER || 'sleeper',
-      password: config.POSTGRES_PASSWORD || 'password',
-      max: 20, // Maximum number of clients in the pool
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-    });
+    // Use DATABASE_URL if available, otherwise use individual config values
+    if (config.DATABASE_URL) {
+      logger.info(`Connecting to PostgreSQL using DATABASE_URL`);
+      this.pool = new Pool({
+        connectionString: config.DATABASE_URL,
+        max: 20, // Maximum number of clients in the pool
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000,
+      });
+    } else {
+      logger.info(`Connecting to PostgreSQL using host: ${config.POSTGRES_HOST}:${config.POSTGRES_PORT}`);
+      this.pool = new Pool({
+        host: config.POSTGRES_HOST || 'localhost',
+        port: config.POSTGRES_PORT || 5432,
+        database: config.POSTGRES_DB || 'sleeper_analytics',
+        user: config.POSTGRES_USER || 'sleeper',
+        password: config.POSTGRES_PASSWORD || 'password',
+        max: 20, // Maximum number of clients in the pool
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000,
+      });
+    }
   }
 
   async initialize(): Promise<void> {

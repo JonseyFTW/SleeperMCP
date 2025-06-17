@@ -9,12 +9,14 @@ const configSchema = z.object({
   CORS_ORIGIN: z.string().default('*'),
 
   // Redis configuration
+  REDIS_URL: z.string().optional(),
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.string().default('6379').transform(Number),
   REDIS_TTL: z.string().default('300').transform(Number), // 5 minutes default
   REDIS_PASSWORD: z.string().optional(),
 
   // PostgreSQL configuration for analytics
+  DATABASE_URL: z.string().optional(),
   POSTGRES_HOST: z.string().default('localhost'),
   POSTGRES_PORT: z.string().default('5432').transform(Number),
   POSTGRES_DB: z.string().default('sleeper_analytics'),
