@@ -1,8 +1,9 @@
 # Railway-optimized Dockerfile for Sleeper MCP Server
 FROM node:18-alpine
 
-# Install system dependencies including PostgreSQL client
-RUN apk add --no-cache \
+# Update npm to latest version and install system dependencies
+RUN npm install -g npm@11.4.2 && \
+    apk add --no-cache \
     bash \
     curl \
     postgresql-client \
@@ -14,7 +15,13 @@ WORKDIR /app
 # Copy package files first (for better caching)
 COPY package*.json ./
 
-# Install dependencies (production only to avoid the @types/csv-parser issue)
+# Disable Husky during Docker build since Git is not available
+ENV HUSKY=0
+
+# Remove prepare script temporarily to avoid Husky issues
+RUN npm pkg delete scripts.prepare
+
+# Install production dependencies first
 RUN npm install --omit=dev && npm cache clean --force
 
 # Copy TypeScript config and source
@@ -22,7 +29,7 @@ COPY tsconfig*.json ./
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 
-# Install dev dependencies and build
+# Install all dependencies and build
 RUN npm install && npm run build && npm prune --production
 
 # Create necessary directories
