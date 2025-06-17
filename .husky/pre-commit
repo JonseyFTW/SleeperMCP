@@ -1,12 +1,37 @@
 #!/bin/sh
 
-# Simple pre-commit hook that works on Windows
-# Try different ways to run npx lint-staged
-if command -v npx >/dev/null 2>&1; then
-    npx lint-staged
-elif command -v npx.cmd >/dev/null 2>&1; then
-    npx.cmd lint-staged
-else
-    echo "Warning: npx not found, skipping lint-staged"
-    exit 0
-fi
+# Cross-platform pre-commit hook for Windows/WSL/Linux
+# Focus on critical errors only for production readiness
+
+# Function to try running lint-staged with production-focused rules
+run_lint_staged() {
+    # Try npx directly first
+    if command -v npx >/dev/null 2>&1; then
+        npx lint-staged --allow-empty
+        return $?
+    fi
+    
+    # Try npx.cmd on Windows
+    if command -v npx.cmd >/dev/null 2>&1; then
+        npx.cmd lint-staged --allow-empty
+        return $?
+    fi
+    
+    # Try with explicit node path on Windows
+    if [ -f "/c/Program Files/nodejs/npx.cmd" ]; then
+        "/c/Program Files/nodejs/npx.cmd" lint-staged --allow-empty
+        return $?
+    fi
+    
+    # Try with different Windows path format
+    if [ -f "C:/Program Files/nodejs/npx.cmd" ]; then
+        "C:/Program Files/nodejs/npx.cmd" lint-staged --allow-empty
+        return $?
+    fi
+    
+    echo "Warning: Could not find npx, skipping lint-staged"
+    return 0
+}
+
+# Run lint-staged
+run_lint_staged

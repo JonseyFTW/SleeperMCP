@@ -101,9 +101,9 @@ export class SmartTTLManager {
         this.nflState = await sleeperAPI.getNFLState();
         this.lastStateUpdate = now;
         logger.debug('Updated NFL state cache', {
-          season: this.nflState.season,
-          week: this.nflState.week,
-          seasonType: this.nflState.season_type,
+          season: this.nflState?.season,
+          week: this.nflState?.week,
+          seasonType: this.nflState?.season_type,
         });
       } catch (error) {
         logger.warn('Failed to update NFL state:', error);

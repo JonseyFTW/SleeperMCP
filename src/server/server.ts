@@ -10,6 +10,7 @@ import { healthCheck } from '../middleware/healthCheck';
 import { metrics } from '../middleware/metrics';
 import { openRPCDocument } from '../openrpc/document';
 import { logger } from '../utils/logger';
+import { sleeperAPI } from '../api/client';
 // Cache imports temporarily disabled to isolate hanging issue
 // import { cacheWarmer } from '../cache/warming';
 // import { enhancedCacheService } from '../cache/enhanced-service';
@@ -31,6 +32,29 @@ export function createServer(app: Express): Server {
   if (config.ENABLE_METRICS) {
     app.get(config.ENDPOINTS.METRICS, metrics);
   }
+
+  // Request optimization endpoints
+  app.get('/optimization/stats', async (_req, res) => {
+    try {
+      const stats = {
+        compression: {
+          enabled: true,
+          level: 6,
+          threshold: 1024
+        },
+        connectionPooling: {
+          maxSockets: 50,
+          maxFreeSockets: 10,
+          keepAlive: true,
+          keepAliveMsecs: 30000
+        },
+        batchProcessing: sleeperAPI ? sleeperAPI.getBatchStats() : { available: false }
+      };
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
 
   // Cache management endpoints temporarily disabled to isolate hanging issue
 

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { SleeperAPIClient } from './client';
-import { CacheService } from '../cache/service';
+// import { CacheService } from '../cache/service';
 
 // Mock axios
 jest.mock('axios');
@@ -9,7 +9,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 // Mock cache service
 jest.mock('../cache/service', () => ({
   CacheService: jest.fn().mockImplementation(() => ({
-    wrap: jest.fn().mockImplementation((key, fn, ttl) => fn()),
+    wrap: jest.fn().mockImplementation((_key, fn, _ttl) => fn()),
   })),
 }));
 

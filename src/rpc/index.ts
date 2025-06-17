@@ -3,6 +3,7 @@ import { leagueMethods } from './methods/league';
 import { playerMethods } from './methods/player';
 import { draftMethods } from './methods/draft';
 import { stateMethods } from './methods/state';
+import { batchRPC, batchLeagueData, batchUserData, analyzeBatchOpportunities } from './methods/batch';
 import { logger } from '../utils/logger';
 import { JsonRpcError } from '../utils/errors';
 import { recordRPCCall } from '../middleware/metrics';
@@ -14,6 +15,11 @@ export function createRPCMethods() {
     ...playerMethods,
     ...draftMethods,
     ...stateMethods,
+    // Batch processing methods
+    'sleeper.batchRPC': batchRPC,
+    'sleeper.batchLeagueData': batchLeagueData,
+    'sleeper.batchUserData': batchUserData,
+    'sleeper.analyzeBatchOpportunities': analyzeBatchOpportunities,
   };
 
   // Wrap all methods with error handling
@@ -31,7 +37,7 @@ export function createRPCMethods() {
       });
 
       try {
-        const result = await method(params);
+        const result = await method(params, context);
 
         const duration = Date.now() - startTime;
         logger.info(`RPC method completed: ${name}`, {

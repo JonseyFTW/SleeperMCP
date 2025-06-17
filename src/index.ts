@@ -5,6 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import compression from 'compression';
 import { createServer } from './server/server';
 import { logger } from './utils/logger';
 import { config } from './config';
@@ -23,6 +24,20 @@ async function bootstrap() {
 
     // Create Express app
     const app = express();
+
+    // Apply compression middleware first
+    app.use(compression({
+      filter: (req, res) => {
+        // Don't compress responses with this request header
+        if (req.headers['x-no-compression']) {
+          return false;
+        }
+        // Fallback to standard filter function
+        return compression.filter(req, res);
+      },
+      level: 6, // Good balance between compression ratio and speed
+      threshold: 1024, // Only compress responses > 1KB
+    }));
 
     // Apply security middleware
     app.use(helmet());

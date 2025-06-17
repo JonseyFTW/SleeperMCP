@@ -3,7 +3,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2022,
     sourceType: 'module',
-    project: './tsconfig.json',
+    project: ['./tsconfig.json', './tsconfig.test.json'],
   },
   plugins: ['@typescript-eslint', 'prettier'],
   extends: [
@@ -38,4 +38,17 @@ module.exports = {
     'prettier/prettier': 'error',
   },
   ignorePatterns: ['dist', 'coverage', 'node_modules', '*.js'],
+  overrides: [
+    {
+      files: ['**/*.test.ts', '**/*.spec.ts'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-return': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
+      },
+    },
+  ],
 };

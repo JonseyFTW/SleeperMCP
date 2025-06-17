@@ -1,23 +1,57 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { Agent } from 'http';
+import { Agent as HttpsAgent } from 'https';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { CacheService } from '../cache/service';
+import { BatchProcessor } from './batch-processor';
 
 export class SleeperAPIClient {
   private client: AxiosInstance;
   private cache: CacheService;
+  private batchProcessor: BatchProcessor;
 
   constructor() {
+    // Create optimized HTTP agents with connection pooling
+    const httpAgent = new Agent({
+      keepAlive: true,
+      keepAliveMsecs: 30000, // Keep connections alive for 30 seconds
+      maxSockets: 50, // Max concurrent connections per host
+      maxFreeSockets: 10, // Max idle connections per host
+      timeout: 60000, // Socket timeout
+    });
+
+    const httpsAgent = new HttpsAgent({
+      keepAlive: true,
+      keepAliveMsecs: 30000,
+      maxSockets: 50,
+      maxFreeSockets: 10,
+      timeout: 60000,
+    });
+
     this.client = axios.create({
       baseURL: config.SLEEPER_API_BASE_URL,
       timeout: config.SLEEPER_API_TIMEOUT,
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'MCP-Sleeper-Server/1.0.0',
+        'Accept-Encoding': 'gzip, deflate, br', // Support compression
+        'Connection': 'keep-alive',
       },
+      httpAgent,
+      httpsAgent,
+      maxRedirects: 3,
+      decompress: true, // Automatically decompress responses
     });
 
     this.cache = new CacheService();
+    this.batchProcessor = new BatchProcessor();
+
+    // Set up the batch processor's request executor
+    this.batchProcessor.setRequestExecutor(async (request) => {
+      const { method, params } = request;
+      return await this.executeDirectRequest(method, params);
+    });
 
     // Request interceptor for logging
     this.client.interceptors.request.use(
@@ -55,6 +89,76 @@ export class SleeperAPIClient {
         return Promise.reject(error);
       }
     );
+  }
+
+  /**
+   * Execute a direct HTTP request to Sleeper API
+   */
+  private executeDirectRequest(_method: string, _params: any[]): Promise<any> {
+    // This is a simplified approach - direct HTTP requests to Sleeper API
+    // In practice, we'll route this through the existing methods
+    return Promise.reject(new Error('Direct request execution not implemented yet'));
+  }
+
+  /**
+   * Batch multiple requests for the same league
+   */
+  async batchLeagueRequests(leagueId: string, requests: Array<{
+    type: 'league' | 'rosters' | 'users' | 'matchups' | 'transactions' | 'traded_picks';
+    params?: any;
+  }>): Promise<any[]> {
+    const promises = requests.map(async (req) => {
+      switch (req.type) {
+        case 'league':
+          return { type: 'league', data: await this.getLeague(leagueId) };
+        case 'rosters':
+          return { type: 'rosters', data: await this.getRosters(leagueId) };
+        case 'users':
+          return { type: 'users', data: await this.getUsers(leagueId) };
+        case 'matchups':
+          const week = req.params?.week || 1;
+          return { type: 'matchups', data: await this.getMatchups(leagueId, week) };
+        case 'transactions':
+          const transWeek = req.params?.week || 1;
+          return { type: 'transactions', data: await this.getTransactions(leagueId, transWeek) };
+        case 'traded_picks':
+          return { type: 'traded_picks', data: await this.getTradedPicks(leagueId) };
+        default:
+          throw new Error(`Unknown request type: ${req.type}`);
+      }
+    });
+
+    return Promise.all(promises);
+  }
+
+  /**
+   * Batch multiple requests for the same user
+   */
+  async batchUserRequests(userId: string, sport: string, season: string, requests: Array<{
+    type: 'user' | 'leagues' | 'drafts';
+    params?: any;
+  }>): Promise<any[]> {
+    const promises = requests.map(async (req) => {
+      switch (req.type) {
+        case 'user':
+          return { type: 'user', data: await this.getUserById(userId) };
+        case 'leagues':
+          return { type: 'leagues', data: await this.getLeaguesForUser(userId, sport, season) };
+        case 'drafts':
+          return { type: 'drafts', data: await this.getDraftsForUser(userId, sport, season) };
+        default:
+          throw new Error(`Unknown request type: ${req.type}`);
+      }
+    });
+
+    return Promise.all(promises);
+  }
+
+  /**
+   * Get batch processor statistics
+   */
+  getBatchStats() {
+    return this.batchProcessor.getStats();
   }
 
   // User endpoints
