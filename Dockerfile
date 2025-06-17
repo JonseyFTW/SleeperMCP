@@ -1,9 +1,8 @@
 # Railway-optimized Dockerfile for Sleeper MCP Server
-FROM node:18-alpine
+FROM node:20-alpine
 
-# Update npm to latest version and install system dependencies
-RUN npm install -g npm@11.4.2 && \
-    apk add --no-cache \
+# Install system dependencies
+RUN apk add --no-cache \
     bash \
     curl \
     postgresql-client \
