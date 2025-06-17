@@ -31,6 +31,9 @@ COPY scripts/ ./scripts/
 # Install all dependencies and build
 RUN npm install && npm run build && npm prune --production
 
+# Copy SQL schema files to dist directory (not handled by TypeScript build)
+RUN mkdir -p dist/analytics && cp src/analytics/*.sql dist/analytics/ 2>/dev/null || true
+
 # Create necessary directories
 RUN mkdir -p logs data
 
