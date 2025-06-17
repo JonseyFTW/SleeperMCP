@@ -38,7 +38,17 @@
       "Bash(PORT=8088 npm start)",
       "Bash(PORT=8089 timeout 10s npm start)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(chmod:*)",
+      "Bash(.husky/pre-commit:*)",
+      "Bash(bash .husky/pre-commit:*)",
+      "Bash(dos2unix:*)",
+      "Bash(npm install:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(npx eslint:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }

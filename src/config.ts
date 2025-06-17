@@ -14,6 +14,13 @@ const configSchema = z.object({
   REDIS_TTL: z.string().default('300').transform(Number), // 5 minutes default
   REDIS_PASSWORD: z.string().optional(),
 
+  // PostgreSQL configuration for analytics
+  POSTGRES_HOST: z.string().default('localhost'),
+  POSTGRES_PORT: z.string().default('5432').transform(Number),
+  POSTGRES_DB: z.string().default('sleeper_analytics'),
+  POSTGRES_USER: z.string().default('sleeper'),
+  POSTGRES_PASSWORD: z.string().default('password'),
+
   // Rate limiting
   RATE_LIMIT_WINDOW_MS: z.string().default('60000').transform(Number), // 1 minute
   RATE_LIMIT_MAX_REQUESTS: z.string().default('1000').transform(Number),

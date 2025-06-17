@@ -1,0 +1,101 @@
+databases:
+  - name: sleeper-postgres
+    databaseName: sleeper_analytics
+    user: sleeper
+    plan: starter
+
+  - name: sleeper-redis
+    plan: starter
+
+services:
+  - type: web
+    name: sleeper-mcp
+    plan: starter
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: LOG_LEVEL
+        value: info
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 10000
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: sleeper-postgres
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: sleeper-postgres
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: sleeper-postgres
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: sleeper-postgres
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: sleeper-postgres
+          property: password
+      - key: REDIS_HOST
+        fromDatabase:
+          name: sleeper-redis
+          property: host
+      - key: REDIS_PORT
+        fromDatabase:
+          name: sleeper-redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromDatabase:
+          name: sleeper-redis
+          property: password
+
+  - type: cron
+    name: nightly-sync
+    schedule: "0 6 * * *"
+    buildCommand: npm install
+    startCommand: npm run analytics:nightly-delta
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: sleeper-postgres
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: sleeper-postgres
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: sleeper-postgres
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: sleeper-postgres
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: sleeper-postgres
+          property: password
+      - key: REDIS_HOST
+        fromDatabase:
+          name: sleeper-redis
+          property: host
+      - key: REDIS_PORT
+        fromDatabase:
+          name: sleeper-redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromDatabase:
+          name: sleeper-redis
+          property: password

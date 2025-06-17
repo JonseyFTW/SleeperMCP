@@ -1,0 +1,104 @@
+name: Nightly Analytics Sync
+
+on:
+  schedule:
+    # Run at 6 AM UTC daily (adjust for your timezone)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  nightly-sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Nightly Sync
+        run: |
+          response=$(curl -s -w "%{http_code}" -X POST "${{ secrets.MCP_SERVER_URL }}/rpc" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "jsonrpc": "2.0",
+              "method": "sleeper.runNightlyDeltaSync",
+              "params": {},
+              "id": "github-actions-'$(date +%s)'"
+            }')
+          
+          http_code="${response: -3}"
+          body="${response%???}"
+          
+          echo "HTTP Code: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Nightly sync failed with HTTP $http_code"
+            exit 1
+          fi
+          
+          echo "✅ Nightly sync triggered successfully"
+      
+      - name: Wait and Check Sync Status
+        run: |
+          echo "⏳ Waiting 30 seconds for sync to complete..."
+          sleep 30
+          
+          response=$(curl -s -w "%{http_code}" -X POST "${{ secrets.MCP_SERVER_URL }}/rpc" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "jsonrpc": "2.0", 
+              "method": "sleeper.getSyncStatus",
+              "params": {},
+              "id": "status-check"
+            }')
+          
+          http_code="${response: -3}"
+          body="${response%???}"
+          
+          echo "HTTP Code: $http_code"
+          echo "Sync Status: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "⚠️ Could not retrieve sync status"
+          else
+            echo "📊 Sync status retrieved successfully"
+          fi
+      
+      - name: Notify on Success
+        if: success()
+        run: |
+          echo "✅ Nightly sync completed successfully!"
+          
+          # Slack notification (if webhook configured)
+          if [ ! -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d '{"text": "✅ Sleeper MCP nightly sync completed successfully at '$(date)'"}' \
+              || echo "Slack notification failed"
+          fi
+          
+          # Discord notification (if webhook configured)
+          if [ ! -z "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d '{"content": "✅ Sleeper MCP nightly sync completed successfully at '$(date)'"}' \
+              || echo "Discord notification failed"
+          fi
+      
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Nightly sync failed!"
+          
+          # Slack notification (if webhook configured)
+          if [ ! -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d '{"text": "🚨 Sleeper MCP nightly sync FAILED at '$(date)'! Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+              || echo "Slack notification failed"
+          fi
+          
+          # Discord notification (if webhook configured)
+          if [ ! -z "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d '{"content": "🚨 Sleeper MCP nightly sync FAILED at '$(date)'! Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+              || echo "Discord notification failed"
+          fi

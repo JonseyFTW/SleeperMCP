@@ -1,0 +1,78 @@
+# Production Dockerfile for Sleeper MCP Server
+FROM node:18-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    bash \
+    curl \
+    postgresql-client \
+    dcron \
+    && rm -rf /var/cache/apk/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy source code
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+
+# Build the application
+RUN npm run build
+
+# Create logs directory
+RUN mkdir -p logs data
+
+# Copy cron setup script
+COPY scripts/setup-cron.sh ./scripts/
+RUN chmod +x scripts/setup-cron.sh scripts/nightly-update.sh
+
+# Set up cron job for nightly sync
+RUN echo "0 6 * * * cd /app && npm run analytics:nightly-delta >> /app/logs/cron.log 2>&1" | crontab -
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Starting Sleeper MCP Server..."\n\
+\n\
+# Start cron daemon in background\n\
+crond -b\n\
+\n\
+# Wait for database to be ready\n\
+echo "Waiting for database connection..."\n\
+for i in {1..30}; do\n\
+  if npm run analytics:setup 2>/dev/null; then\n\
+    echo "Database connection established"\n\
+    break\n\
+  fi\n\
+  if [ $i -eq 30 ]; then\n\
+    echo "Database connection failed after 30 attempts"\n\
+    exit 1\n\
+  fi\n\
+  sleep 2\n\
+done\n\
+\n\
+# Initialize analytics if needed\n\
+echo "Initializing analytics system..."\n\
+npm run analytics:update || echo "Analytics update failed (non-critical)"\n\
+\n\
+# Start the main application\n\
+echo "Starting MCP server..."\n\
+exec npm start\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
+
+# Expose port
+EXPOSE 8080
+
+# Start the application
+CMD ["/app/start.sh"]
