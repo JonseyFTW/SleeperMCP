@@ -36,7 +36,6 @@
     "jayson": "^4.1.0",
     "morgan": "^1.10.0",
     "node-cache": "^5.1.2",
-    "open-rpc-server": "^1.0.0",
     "winston": "^3.11.0",
     "zod": "^3.22.4"
   },

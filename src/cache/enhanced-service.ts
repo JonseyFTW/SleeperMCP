@@ -3,10 +3,27 @@ import { config } from '../config';
 import { logger } from '../utils/logger';
 import { redisClient } from './redis';
 import { smartTTLManager, CacheContext } from './smart-ttl';
+import { compressionManager } from './compression';
 
-export class CacheService {
+interface CacheEntry {
+  data: any;
+  metadata: {
+    compressed: boolean;
+    originalSize: number;
+    compressedSize?: number;
+    timestamp: number;
+    version: string;
+  };
+}
+
+export class EnhancedCacheService {
   private memoryCache: NodeCache;
   private useRedis: boolean = false;
+  private compressionStats = {
+    totalEntries: 0,
+    compressedEntries: 0,
+    totalSavedBytes: 0,
+  };
 
   constructor() {
     // Initialize in-memory cache as fallback
@@ -51,7 +68,8 @@ export class CacheService {
           const value = await redisClient.get(key);
           if (value) {
             logger.debug(`Cache hit (Redis): ${key}`);
-            return JSON.parse(value);
+            const entry: CacheEntry = JSON.parse(value);
+            return await compressionManager.decompress(entry.data, entry.metadata.compressed);
           }
         } catch (redisError) {
           logger.warn('Redis get failed, falling back to memory cache:', redisError);
@@ -63,7 +81,8 @@ export class CacheService {
       const value = this.memoryCache.get(key);
       if (value !== undefined) {
         logger.debug(`Cache hit (Memory): ${key}`);
-        return value;
+        const entry = value as CacheEntry;
+        return await compressionManager.decompress(entry.data, entry.metadata.compressed);
       }
 
       logger.debug(`Cache miss: ${key}`);
@@ -75,17 +94,31 @@ export class CacheService {
   }
 
   async set(key: string, value: any, ttl?: number): Promise<void> {
-    if (!config.CACHE_ENABLED) {
-      return;
-    }
+    if (!config.CACHE_ENABLED) return;
 
     const cacheTTL = ttl || config.CACHE_DEFAULT_TTL;
 
     try {
+      // Compress the data
+      const compressionResult = await compressionManager.compress(value);
+      const entry: CacheEntry = {
+        data: compressionResult.data,
+        metadata: compressionManager.createCacheMetadata(
+          compressionResult.compressed,
+          compressionResult.originalSize,
+          compressionResult.compressedSize
+        ),
+      };
+
+      // Update compression stats
+      this.updateCompressionStats(compressionResult);
+
+      const serializedEntry = JSON.stringify(entry);
+
       if (this.useRedis && redisClient && redisClient.status === 'ready') {
         try {
-          await redisClient.set(key, JSON.stringify(value), 'EX', cacheTTL);
-          logger.debug(`Cache set (Redis): ${key} (TTL: ${cacheTTL}s)`);
+          await redisClient.set(key, serializedEntry, 'EX', cacheTTL);
+          logger.debug(`Cache set (Redis): ${key} (TTL: ${cacheTTL}s, Compressed: ${compressionResult.compressed})`);
         } catch (redisError) {
           logger.warn('Redis set failed, disabling Redis cache:', redisError);
           this.useRedis = false;
@@ -93,11 +126,20 @@ export class CacheService {
       }
 
       // Also set in memory cache as backup
-      this.memoryCache.set(key, value, cacheTTL);
-      logger.debug(`Cache set (Memory): ${key} (TTL: ${cacheTTL}s)`);
+      this.memoryCache.set(key, entry, cacheTTL);
+      logger.debug(`Cache set (Memory): ${key} (TTL: ${cacheTTL}s, Compressed: ${compressionResult.compressed})`);
     } catch (error) {
       logger.error('Cache set error:', error);
       // Continue execution even if caching fails
+    }
+  }
+
+  private updateCompressionStats(result: { compressed: boolean; originalSize: number; compressedSize?: number }) {
+    this.compressionStats.totalEntries++;
+    
+    if (result.compressed && result.compressedSize) {
+      this.compressionStats.compressedEntries++;
+      this.compressionStats.totalSavedBytes += result.originalSize - result.compressedSize;
     }
   }
 
@@ -129,32 +171,21 @@ export class CacheService {
         }
       }
       this.memoryCache.flushAll();
+      
+      // Reset compression stats
+      this.compressionStats = {
+        totalEntries: 0,
+        compressedEntries: 0,
+        totalSavedBytes: 0,
+      };
+      
       logger.info('Cache flushed');
     } catch (error) {
       logger.error('Cache flush error:', error);
     }
   }
 
-  // Wrapper function for automatic caching
-  async wrap<T>(key: string, fn: () => Promise<T>, ttl?: number): Promise<T> {
-    // Check cache first
-    const cached = await this.get(key);
-    if (cached !== null) {
-      return cached;
-    }
-
-    // Execute function and cache result
-    try {
-      const result = await fn();
-      await this.set(key, result, ttl);
-      return result;
-    } catch (error) {
-      logger.error(`Error executing wrapped function for key ${key}:`, error);
-      throw error;
-    }
-  }
-
-  // Smart wrapper with automatic TTL optimization
+  // Smart wrapper with automatic TTL optimization and compression
   async smartWrap<T>(
     key: string,
     fn: () => Promise<T>,
@@ -197,7 +228,7 @@ export class CacheService {
     await this.set(key, value, optimalTTL);
   }
 
-  // Get cache statistics
+  // Get comprehensive cache statistics
   async getStats() {
     const memoryStats = {
       keys: this.memoryCache.keys().length,
@@ -209,11 +240,59 @@ export class CacheService {
 
     // Get smart TTL stats
     const smartStats = await smartTTLManager.getCacheStats();
+    
+    // Get compression stats
+    const compressionConfig = compressionManager.getStats();
 
     return {
       useRedis: this.useRedis,
       memory: memoryStats,
       smartTTL: smartStats,
+      compression: {
+        ...compressionConfig,
+        stats: {
+          ...this.compressionStats,
+          compressionRatio: this.compressionStats.totalEntries > 0 
+            ? (this.compressionStats.compressedEntries / this.compressionStats.totalEntries * 100).toFixed(1) + '%'
+            : '0%',
+          savedBytes: this.compressionStats.totalSavedBytes,
+          savedMB: (this.compressionStats.totalSavedBytes / (1024 * 1024)).toFixed(2) + 'MB',
+        },
+      },
+    };
+  }
+
+  // Utility methods for cache management
+  async warmCache(keys: Array<{ key: string; fn: () => Promise<any>; dataType: string; context?: Partial<CacheContext> }>): Promise<void> {
+    logger.info(`Warming cache with ${keys.length} keys`);
+    
+    const results = await Promise.allSettled(
+      keys.map(async ({ key, fn, dataType, context }) => {
+        try {
+          await this.smartWrap(key, fn, dataType, context);
+          return { key, status: 'success' };
+        } catch (error) {
+          logger.warn(`Failed to warm cache for key ${key}:`, error);
+          return { key, status: 'failed', error: (error as Error).message };
+        }
+      })
+    );
+
+    const successful = results.filter(r => r.status === 'fulfilled' && r.value.status === 'success').length;
+    logger.info(`Cache warming completed: ${successful}/${keys.length} keys warmed`);
+  }
+
+  // Get cache key patterns for monitoring
+  getKeyPatterns(): { redis: string[]; memory: string[] } {
+    const memoryKeys = this.memoryCache.keys();
+    
+    // For Redis, we'd need to scan keys (not implemented here for performance reasons)
+    return {
+      redis: [], // Would require SCAN operation
+      memory: memoryKeys,
     };
   }
 }
+
+// Export singleton instance
+export const enhancedCacheService = new EnhancedCacheService();

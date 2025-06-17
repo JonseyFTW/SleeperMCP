@@ -2,7 +2,8 @@ export const openRPCDocument = {
   openrpc: '1.2.6',
   info: {
     title: 'MCP Sleeper Fantasy Football API',
-    description: 'Model Context Protocol server providing JSON-RPC 2.0 access to Sleeper Fantasy Football API',
+    description:
+      'Model Context Protocol server providing JSON-RPC 2.0 access to Sleeper Fantasy Football API',
     version: '1.0.0',
     contact: {
       name: 'API Support',

@@ -10,6 +10,11 @@ import { healthCheck } from '../middleware/healthCheck';
 import { metrics } from '../middleware/metrics';
 import { openRPCDocument } from '../openrpc/document';
 import { logger } from '../utils/logger';
+// Cache imports temporarily disabled to isolate hanging issue
+// import { cacheWarmer } from '../cache/warming';
+// import { enhancedCacheService } from '../cache/enhanced-service';
+// import { cacheInvalidator } from '../cache/invalidation';
+// import { cacheManager } from '../cache/manager';
 
 export function createServer(app: Express): Server {
   // Body parsing middleware
@@ -27,14 +32,16 @@ export function createServer(app: Express): Server {
     app.get(config.ENDPOINTS.METRICS, metrics);
   }
 
+  // Cache management endpoints temporarily disabled to isolate hanging issue
+
   // OpenRPC documentation
-  app.get(config.ENDPOINTS.OPENRPC, (req, res) => {
+  app.get(config.ENDPOINTS.OPENRPC, (_req, res) => {
     res.json(openRPCDocument);
   });
 
   // Interactive documentation UI
   if (config.ENABLE_OPENRPC_UI) {
-    app.get(config.ENDPOINTS.DOCS, (req, res) => {
+    app.get(config.ENDPOINTS.DOCS, (_req, res) => {
       res.send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -170,17 +177,17 @@ export function createServer(app: Express): Server {
   });
 
   // JSON-RPC endpoint
-  app.post(config.ENDPOINTS.RPC, (req, res) => {
-    logger.debug('RPC request:', { 
-      method: req.body.method, 
+  app.post(config.ENDPOINTS.RPC, (req, res): void => {
+    logger.debug('RPC request:', {
+      method: req.body.method,
       id: req.body.id,
-      params: req.body.params 
+      params: req.body.params,
     });
 
-    rpcServer.call(req.body, { req, res }, (err: any, result: any) => {
+    rpcServer.call(req.body, { req, res }, (err: any, result: any): void => {
       if (err) {
         logger.error('RPC error:', err);
-        return res.status(500).json({
+        res.status(500).json({
           jsonrpc: '2.0',
           error: {
             code: -32603,
@@ -189,14 +196,19 @@ export function createServer(app: Express): Server {
           },
           id: req.body.id || null,
         });
+        return;
       }
 
-      res.json(result || {
-        jsonrpc: '2.0',
-        result: null,
-        id: req.body.id || null,
-      });
+      res.json(
+        result || {
+          jsonrpc: '2.0',
+          result: null,
+          id: req.body.id || null,
+        }
+      );
     });
+
+    // Callback handles the response, no explicit return needed
   });
 
   // 404 handler
@@ -211,5 +223,5 @@ export function createServer(app: Express): Server {
   // Error handling middleware
   app.use(errorHandler);
 
-  return app.listen();
+  return require('http').createServer(app);
 }

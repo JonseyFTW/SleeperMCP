@@ -20,9 +20,9 @@ export async function gracefulShutdown(server: Server): Promise<void> {
     try {
       // Close Redis connection
       await closeCache();
-      
+
       // Add any other cleanup tasks here
-      
+
       logger.info('Graceful shutdown completed');
       process.exit(0);
     } catch (error) {

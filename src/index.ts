@@ -1,4 +1,6 @@
 import 'dotenv/config';
+
+console.log('🚀 Starting MCP Sleeper Server...');
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -8,6 +10,10 @@ import { logger } from './utils/logger';
 import { config } from './config';
 import { initializeCache } from './cache/redis';
 import { gracefulShutdown } from './utils/shutdown';
+// Advanced cache imports temporarily disabled to avoid circular dependencies
+// import { cacheWarmer } from './cache/warming';
+// import { cacheInvalidator } from './cache/invalidation';
+// import { cacheManager } from './cache/manager';
 
 async function bootstrap() {
   try {
@@ -20,20 +26,26 @@ async function bootstrap() {
 
     // Apply security middleware
     app.use(helmet());
-    app.use(cors({
-      origin: config.CORS_ORIGIN,
-      credentials: true,
-    }));
+    app.use(
+      cors({
+        origin: config.CORS_ORIGIN,
+        credentials: true,
+      })
+    );
 
     // Request logging
-    app.use(morgan('combined', {
-      stream: {
-        write: (message) => logger.info(message.trim()),
-      },
-    }));
+    app.use(
+      morgan('combined', {
+        stream: {
+          write: (message) => logger.info(message.trim()),
+        },
+      })
+    );
 
+    console.log('About to create server...');
     // Create and start server
     const server = createServer(app);
+    console.log('Server created successfully!');
 
     // Handle graceful shutdown
     process.on('SIGTERM', () => gracefulShutdown(server));
@@ -53,11 +65,15 @@ async function bootstrap() {
     // Start server
     server.listen(config.PORT, () => {
       logger.info(`🚀 MCP Sleeper Server running on port ${config.PORT}`);
-      logger.info(`📚 OpenRPC documentation available at http://localhost:${config.PORT}/openrpc.json`);
+      logger.info(
+        `📚 OpenRPC documentation available at http://localhost:${config.PORT}/openrpc.json`
+      );
       logger.info(`🔧 Interactive docs available at http://localhost:${config.PORT}/docs`);
       logger.info(`🏃 Health check available at http://localhost:${config.PORT}/health`);
+      
+      // All schedulers disabled for testing - server should work without them
+      logger.info(`📊 Basic server running without cache schedulers`);
     });
-
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);

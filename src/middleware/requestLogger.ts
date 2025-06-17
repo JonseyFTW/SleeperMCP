@@ -4,7 +4,7 @@ import { recordRequest } from './metrics';
 
 export function requestLogger(req: Request, res: Response, next: NextFunction): void {
   const start = Date.now();
-  
+
   // Log request
   logger.info('Incoming request', {
     method: req.method,
@@ -15,10 +15,10 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
 
   // Capture response
   const originalSend = res.send;
-  res.send = function(data) {
+  res.send = function (data) {
     res.send = originalSend;
     const duration = Date.now() - start;
-    
+
     // Log response
     logger.info('Request completed', {
       method: req.method,
@@ -26,10 +26,10 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
       status: res.statusCode,
       duration,
     });
-    
+
     // Record metrics
     recordRequest(req.method, res.statusCode, duration);
-    
+
     return res.send(data);
   };
 

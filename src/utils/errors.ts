@@ -25,7 +25,7 @@ export const ErrorCodes = {
   METHOD_NOT_FOUND: -32601,
   INVALID_PARAMS: -32602,
   INTERNAL_ERROR: -32603,
-  
+
   // Custom error codes
   RATE_LIMIT_EXCEEDED: -32003,
   SERVICE_UNAVAILABLE: -32002,
@@ -49,7 +49,7 @@ export class NotFoundError extends JsonRpcError {
 export class RateLimitError extends JsonRpcError {
   constructor(retryAfter?: number) {
     super(
-      ErrorCodes.RATE_LIMIT_EXCEEDED, 
+      ErrorCodes.RATE_LIMIT_EXCEEDED,
       'Rate limit exceeded',
       retryAfter ? { retryAfter } : undefined
     );

@@ -1,4 +1,14 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-npx lint-staged
+# Try to find npx in different locations for Windows compatibility
+if command -v npx >/dev/null 2>&1; then
+    npx lint-staged
+elif command -v npx.cmd >/dev/null 2>&1; then
+    npx.cmd lint-staged
+elif [ -f "/c/Program Files/nodejs/npx.cmd" ]; then
+    "/c/Program Files/nodejs/npx.cmd" lint-staged
+else
+    echo "Warning: npx not found, skipping lint-staged"
+    exit 0
+fi

@@ -3,7 +3,7 @@ import { config } from '../config';
 import { redisClient } from '../cache/redis';
 import { sleeperAPI } from '../api/client';
 
-export async function healthCheck(req: Request, res: Response): Promise<void> {
+export async function healthCheck(_req: Request, res: Response): Promise<void> {
   const health: any = {
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -17,7 +17,7 @@ export async function healthCheck(req: Request, res: Response): Promise<void> {
     try {
       await redisClient.ping();
       health.redis = { status: 'connected' };
-    } catch (error) {
+    } catch (error: any) {
       health.redis = { status: 'disconnected', error: error.message };
       health.status = 'degraded';
     }
@@ -26,12 +26,12 @@ export async function healthCheck(req: Request, res: Response): Promise<void> {
   // Check Sleeper API health
   try {
     const state = await sleeperAPI.getNFLState();
-    health.sleeperAPI = { 
+    health.sleeperAPI = {
       status: 'connected',
       season: state.season,
       week: state.week,
     };
-  } catch (error) {
+  } catch (error: any) {
     health.sleeperAPI = { status: 'disconnected', error: error.message };
     health.status = 'degraded';
   }

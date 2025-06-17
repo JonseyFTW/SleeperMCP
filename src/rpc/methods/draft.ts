@@ -6,7 +6,10 @@ import { validateParams } from '../../utils/validation';
 const getDraftsForUserSchema = z.object({
   userId: z.string().min(1).describe('Sleeper user ID'),
   sport: z.string().default('nfl').describe('Sport type (default: nfl)'),
-  season: z.string().regex(/^\d{4}$/).describe('Season year (e.g., 2024)'),
+  season: z
+    .string()
+    .regex(/^\d{4}$/)
+    .describe('Season year (e.g., 2024)'),
 });
 
 const getDraftsForLeagueSchema = z.object({
