@@ -1,72 +1,70 @@
-# Multi-stage build for optimized production image
+# Railway-optimized Dockerfile for Sleeper MCP Server
+FROM node:18-alpine
 
-# Stage 1: Build stage
-FROM node:20-alpine AS builder
-
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
-
-# Install dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
-
-# Copy source code
-COPY src ./src
-
-# Install dev dependencies for building
-RUN npm ci
-
-# Build the application
-RUN npm run build
-
-# Remove dev dependencies
-RUN npm prune --production
-
-# Stage 2: Production stage
-FROM node:20-alpine
-
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+# Install system dependencies including PostgreSQL client
+RUN apk add --no-cache \
+    bash \
+    curl \
+    postgresql-client \
+    && rm -rf /var/cache/apk/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first (for better caching)
 COPY package*.json ./
 
-# Copy built application and production dependencies from builder
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+# Install dependencies (production only to avoid the @types/csv-parser issue)
+RUN npm install --omit=dev && npm cache clean --force
 
-# Copy additional files
-COPY --chown=nodejs:nodejs openrpc.json ./openrpc.json
+# Copy TypeScript config and source
+COPY tsconfig*.json ./
+COPY src/ ./src/
+COPY scripts/ ./scripts/
 
-# Switch to non-root user
-USER nodejs
+# Install dev dependencies and build
+RUN npm install && npm run build && npm prune --production
+
+# Create necessary directories
+RUN mkdir -p logs data
+
+# Make scripts executable
+RUN chmod +x scripts/*.sh 2>/dev/null || true
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
 # Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8080/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); })"
-
-# Set environment to production
-ENV NODE_ENV=production
-
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["dumb-init", "--"]
+# Create startup script that handles database initialization
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "🚀 Starting Sleeper MCP Server..."\n\
+\n\
+# Wait for database to be ready\n\
+echo "⏳ Waiting for database connection..."\n\
+for i in {1..30}; do\n\
+  if npm run analytics:setup 2>/dev/null; then\n\
+    echo "✅ Database connection established"\n\
+    break\n\
+  fi\n\
+  if [ $i -eq 30 ]; then\n\
+    echo "⚠️ Database setup failed, continuing anyway"\n\
+    break\n\
+  fi\n\
+  sleep 2\n\
+done\n\
+\n\
+# Try to update current data (non-critical)\n\
+echo "📊 Updating current player data..."\n\
+npm run analytics:update || echo "⚠️ Current data update failed (non-critical)"\n\
+\n\
+# Start the main application\n\
+echo "🌟 Starting MCP server on port ${PORT:-8080}"\n\
+exec npm start\n\
+' > /app/start.sh && chmod +x /app/start.sh
 
 # Start the application
-CMD ["node", "dist/index.js"]
+CMD ["/app/start.sh"]
