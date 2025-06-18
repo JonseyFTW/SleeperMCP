@@ -48,8 +48,17 @@ async function bootstrap() {
       threshold: 1024, // Only compress responses > 1KB
     }));
 
-    // Apply security middleware
-    app.use(helmet());
+    // Apply security middleware with relaxed CSP for API docs
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:", "https:"],
+        },
+      },
+    }));
     app.use(
       cors({
         origin: config.CORS_ORIGIN,
