@@ -230,22 +230,15 @@ export class MCPProtocolHandler {
     const params = request.params as MCPInitializeParams;
     
     const result: MCPInitializeResult = {
-      protocolVersion: '2024-11-05',
+      protocolVersion: params.protocolVersion || '2024-11-05',
       serverInfo: {
         name: 'sleeper-mcp-server',
         version: '1.0.0'
       },
       capabilities: {
-        tools: {
-          listChanged: false
-        },
-        resources: {
-          subscribe: false,
-          listChanged: false  
-        },
-        prompts: {
-          listChanged: false
-        },
+        tools: {},
+        resources: {},
+        prompts: {},
         logging: {}
       }
     };
