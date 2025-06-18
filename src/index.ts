@@ -11,6 +11,7 @@ import { logger } from './utils/logger';
 import { config } from './config';
 import { initializeCache } from './cache/redis';
 import { gracefulShutdown } from './utils/shutdown';
+import { analyticsService } from './analytics/service';
 // Advanced cache imports temporarily disabled to avoid circular dependencies
 // import { cacheWarmer } from './cache/warming';
 // import { cacheInvalidator } from './cache/invalidation';
@@ -21,6 +22,14 @@ async function bootstrap() {
     // Initialize cache
     await initializeCache();
     logger.info('Cache initialized successfully');
+
+    // Initialize analytics service (optional - will gracefully fail if PostgreSQL not available)
+    try {
+      await analyticsService.initialize();
+      logger.info('Analytics service initialized successfully');
+    } catch (error) {
+      logger.warn('Analytics service initialization failed (continuing without analytics):', error);
+    }
 
     // Create Express app
     const app = express();
@@ -39,8 +48,17 @@ async function bootstrap() {
       threshold: 1024, // Only compress responses > 1KB
     }));
 
-    // Apply security middleware
-    app.use(helmet());
+    // Apply security middleware with relaxed CSP for API docs
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:", "https:"],
+        },
+      },
+    }));
     app.use(
       cors({
         origin: config.CORS_ORIGIN,

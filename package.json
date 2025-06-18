@@ -14,7 +14,15 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "analytics:setup": "tsx scripts/analytics-cli.ts setup-db",
+    "analytics:ingest": "tsx scripts/analytics-cli.ts ingest-historical",
+    "analytics:update": "tsx scripts/analytics-cli.ts update-current",
+    "analytics:sync": "tsx scripts/analytics-cli.ts daily-sync",
+    "analytics:test": "tsx scripts/analytics-cli.ts test-analytics",
+    "analytics:nightly-delta": "tsx scripts/analytics-cli.ts nightly-delta",
+    "analytics:check-delta": "tsx scripts/analytics-cli.ts check-delta",
+    "analytics:force-sync": "tsx scripts/analytics-cli.ts force-sync"
   },
   "keywords": [
     "mcp",
@@ -27,8 +35,10 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^1.6.5",
+    "commander": "^11.1.0",
     "compression": "^1.8.0",
     "cors": "^2.8.5",
+    "csv-parser": "^3.0.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
@@ -37,6 +47,7 @@
     "jayson": "^4.1.0",
     "morgan": "^1.10.0",
     "node-cache": "^5.1.2",
+    "pg": "^8.11.3",
     "winston": "^3.11.0",
     "zod": "^3.22.4"
   },
@@ -47,6 +58,7 @@
     "@types/jest": "^29.5.11",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.10.8",
+    "@types/pg": "^8.10.9",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^6.18.1",
     "@typescript-eslint/parser": "^6.18.1",
@@ -63,7 +75,7 @@
     "typescript": "^5.3.3"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "lint-staged": {
     "*.ts": [

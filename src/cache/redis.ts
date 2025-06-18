@@ -11,10 +11,13 @@ export async function initializeCache(): Promise<void> {
   }
 
   try {
+    logger.info(`Redis config - HOST: ${config.REDIS_HOST}, PORT: ${config.REDIS_PORT}, PASSWORD: ${config.REDIS_PASSWORD ? 'SET' : 'NOT SET'}`);
+    
     redisClient = new Redis({
       host: config.REDIS_HOST,
       port: config.REDIS_PORT,
       password: config.REDIS_PASSWORD,
+      family: 0, // Enable dual-stack (IPv4 + IPv6) lookup for Railway compatibility
       retryStrategy: (times: number) => {
         const delay = Math.min(times * 50, 2000);
         logger.warn(`Redis connection attempt ${times}, retrying in ${delay}ms`);

@@ -4,6 +4,7 @@ import { playerMethods } from './methods/player';
 import { draftMethods } from './methods/draft';
 import { stateMethods } from './methods/state';
 import { batchRPC, batchLeagueData, batchUserData, analyzeBatchOpportunities } from './methods/batch';
+import { analyticsMethods } from './methods/analytics';
 import { logger } from '../utils/logger';
 import { JsonRpcError } from '../utils/errors';
 import { recordRPCCall } from '../middleware/metrics';
@@ -20,6 +21,8 @@ export function createRPCMethods() {
     'sleeper.batchLeagueData': batchLeagueData,
     'sleeper.batchUserData': batchUserData,
     'sleeper.analyzeBatchOpportunities': analyzeBatchOpportunities,
+    // Analytics methods
+    ...analyticsMethods,
   };
 
   // Wrap all methods with error handling
