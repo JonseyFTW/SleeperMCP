@@ -2,11 +2,27 @@
 
 ## Overview
 
-This Model Context Protocol (MCP) server provides access to Sleeper Fantasy Football data through JSON-RPC 2.0 endpoints. Use this server to answer questions about NFL players, fantasy football leagues, drafts, and analytics.
+This Model Context Protocol (MCP) server provides access to Sleeper Fantasy Football data through multiple protocols. Use this server to answer questions about NFL players, fantasy football leagues, drafts, and analytics.
 
-## Base URL
+## Integration Options
+
+### Option 1: Claude Desktop (MCP Protocol)
+**For Claude Desktop users**: Use the native MCP endpoint
 ```
-https://sleepermcp-production.up.railway.app/
+https://sleepermcp-production.up.railway.app/mcp
+```
+
+### Option 2: Local MCP Bridge (Recommended for Claude Desktop)
+Run the included `mcp-bridge.js` locally:
+```bash
+node mcp-bridge.js
+```
+Then configure Claude Desktop to use `http://localhost:3001`
+
+### Option 3: HTTP JSON-RPC (For other LLMs)
+**For API integrations**: Use the JSON-RPC endpoint
+```
+https://sleepermcp-production.up.railway.app/rpc
 ```
 
 ## Key Endpoints & When to Use Them
@@ -151,6 +167,29 @@ Start with basic data, then enhance with analytics:
 ## Health Check
 
 Monitor server status at: `https://sleepermcp-production.up.railway.app/health`
+
+## Claude Desktop Configuration
+
+### Option 1: Direct HTTP Connection (if supported)
+In Claude Desktop settings, add:
+```
+Server URL: https://sleepermcp-production.up.railway.app/mcp
+```
+
+### Option 2: Local Bridge (Recommended)
+1. **Install axios**: `npm install axios` 
+2. **Run bridge**: `node mcp-bridge.js`
+3. **Configure Claude Desktop**:
+```json
+{
+  "mcpServers": {
+    "sleeper": {
+      "command": "node",
+      "args": ["/path/to/your/mcp-bridge.js"]
+    }
+  }
+}
+```
 
 ## Getting Started
 
