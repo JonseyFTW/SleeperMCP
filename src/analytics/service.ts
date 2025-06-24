@@ -3,6 +3,7 @@ import { dataIngestion } from './ingestion';
 import { logger } from '../utils/logger';
 
 export class AnalyticsService {
+  private isInitialized: boolean = false;
   
   /**
    * Initialize analytics service
@@ -10,17 +11,31 @@ export class AnalyticsService {
   async initialize(): Promise<void> {
     try {
       await analyticsDB.initialize();
+      this.isInitialized = true;
       logger.info('Analytics service initialized successfully');
     } catch (error) {
+      this.isInitialized = false;
       logger.error('Failed to initialize analytics service:', error);
       throw error;
     }
   }
 
   /**
+   * Check if analytics is available
+   */
+  isAvailable(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
    * Get player performance analytics
    */
   async getPlayerAnalytics(playerId: string): Promise<any> {
+    if (!this.isInitialized) {
+      logger.warn(`Analytics service not available, returning null for player ${playerId}`);
+      return null;
+    }
+
     try {
       const [careerStats, recentTrends] = await Promise.all([
         analyticsDB.getPlayerCareerStats(playerId),
@@ -54,6 +69,11 @@ export class AnalyticsService {
    * Get position rankings and comparisons
    */
   async getPositionAnalytics(position: string, season?: number): Promise<any> {
+    if (!this.isInitialized) {
+      logger.warn(`Analytics service not available, returning null for position ${position}`);
+      return null;
+    }
+
     try {
       const leaders = await analyticsDB.getCurrentSeasonLeaders(position, 100);
       
@@ -85,6 +105,11 @@ export class AnalyticsService {
    * Get player projections based on historical performance
    */
   async getPlayerProjections(playerId: string, weeks: number = 4): Promise<any> {
+    if (!this.isInitialized) {
+      logger.warn(`Analytics service not available, returning null for player projections ${playerId}`);
+      return null;
+    }
+
     try {
       const trends = await analyticsDB.getPlayerTrends(playerId, 10);
       
@@ -128,6 +153,11 @@ export class AnalyticsService {
    * Get matchup analysis
    */
   async getMatchupAnalysis(playerId: string, opponentTeam: string): Promise<any> {
+    if (!this.isInitialized) {
+      logger.warn(`Analytics service not available, returning null for matchup analysis ${playerId} vs ${opponentTeam}`);
+      return null;
+    }
+
     try {
       // Get historical performance against this opponent
       const query = `
@@ -180,14 +210,23 @@ export class AnalyticsService {
    * Run data ingestion processes
    */
   async ingestHistoricalData(startYear?: number, endYear?: number): Promise<void> {
+    if (!this.isInitialized) {
+      throw new Error('Analytics service not available - database not connected');
+    }
     return dataIngestion.ingestHistoricalData(startYear, endYear);
   }
 
   async updateCurrentData(): Promise<void> {
+    if (!this.isInitialized) {
+      throw new Error('Analytics service not available - database not connected');
+    }
     return dataIngestion.updateCurrentPlayerData();
   }
 
   async runDailySync(): Promise<void> {
+    if (!this.isInitialized) {
+      throw new Error('Analytics service not available - database not connected');
+    }
     return dataIngestion.runDailySync();
   }
 
@@ -222,6 +261,9 @@ export class AnalyticsService {
   }
 
   private async getPositionRank(playerId: string, position: string): Promise<number> {
+    if (!this.isInitialized) {
+      return 0; // Return 0 if analytics not available
+    }
     const leaders = await analyticsDB.getCurrentSeasonLeaders(position, 200);
     const playerIndex = leaders.findIndex(p => p.player_id === playerId);
     return playerIndex >= 0 ? playerIndex + 1 : 0;
