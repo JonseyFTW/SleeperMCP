@@ -16,7 +16,8 @@ export class AnalyticsService {
     } catch (error) {
       this.isInitialized = false;
       logger.error('Failed to initialize analytics service:', error);
-      throw error;
+      // Don't throw error - let the service run without analytics
+      // The individual methods will check isInitialized and return null gracefully
     }
   }
 
