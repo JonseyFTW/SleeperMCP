@@ -11,6 +11,7 @@ import { metrics } from '../middleware/metrics';
 import { openRPCDocument } from '../openrpc/document';
 import { logger } from '../utils/logger';
 import { sleeperAPI } from '../api/client';
+import { MCPProtocolHandler } from '../mcp/protocol';
 // Cache imports temporarily disabled to isolate hanging issue
 // import { cacheWarmer } from '../cache/warming';
 // import { enhancedCacheService } from '../cache/enhanced-service';
@@ -157,6 +158,7 @@ export function createServer(app: Express): Server {
 }</code></pre>
 
               <h3>Available Endpoints</h3>
+              <div class="endpoint">POST /mcp - MCP Protocol endpoint (for Claude Desktop)</div>
               <div class="endpoint">POST ${config.ENDPOINTS.RPC} - JSON-RPC endpoint</div>
               <div class="endpoint">GET ${config.ENDPOINTS.HEALTH} - Health check</div>
               <div class="endpoint">GET ${config.ENDPOINTS.OPENRPC} - OpenRPC specification</div>
@@ -190,6 +192,14 @@ export function createServer(app: Express): Server {
       `);
     });
   }
+
+  // MCP Protocol Handler
+  const mcpHandler = new MCPProtocolHandler();
+  
+  // MCP endpoints for Claude Desktop integration
+  app.post('/mcp', async (req, res) => {
+    await mcpHandler.handleMCPRequest(req, res);
+  });
 
   // Rate limiting for RPC endpoint
   app.use(config.ENDPOINTS.RPC, rateLimiter);
