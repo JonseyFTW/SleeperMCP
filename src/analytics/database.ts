@@ -60,11 +60,6 @@ export class AnalyticsDatabase {
       
       logger.info('Analytics database schema initialized');
     } catch (error) {
-      // Handle the case where tables already exist
-      if (error && typeof error === 'object' && 'code' in error && error.code === '42P07') { // relation already exists
-        logger.info('Analytics database schema already exists, skipping initialization');
-        return;
-      }
       logger.error('Failed to setup analytics schema:', error);
       throw error;
     }

@@ -2,7 +2,7 @@
 -- Optimized for time-series analysis and ML features
 
 -- Core player information (relatively static)
-CREATE TABLE players (
+CREATE TABLE IF NOT EXISTS players (
     player_id VARCHAR(20) PRIMARY KEY,
     sleeper_id VARCHAR(20) UNIQUE,
     first_name VARCHAR(100),
@@ -20,7 +20,7 @@ CREATE TABLE players (
 );
 
 -- Season-level player stats (from historical data)
-CREATE TABLE player_season_stats (
+CREATE TABLE IF NOT EXISTS player_season_stats (
     id SERIAL PRIMARY KEY,
     player_id VARCHAR(20) REFERENCES players(player_id),
     season INTEGER,
@@ -59,7 +59,7 @@ CREATE TABLE player_season_stats (
 );
 
 -- Current player status and projections
-CREATE TABLE player_current_data (
+CREATE TABLE IF NOT EXISTS player_current_data (
     player_id VARCHAR(20) PRIMARY KEY REFERENCES players(player_id),
     status VARCHAR(20), -- Active, Inactive, IR, etc.
     injury_status VARCHAR(100),
@@ -72,7 +72,7 @@ CREATE TABLE player_current_data (
 );
 
 -- Team information
-CREATE TABLE teams (
+CREATE TABLE IF NOT EXISTS teams (
     team_code VARCHAR(5) PRIMARY KEY,
     team_name VARCHAR(50),
     city VARCHAR(50),
@@ -81,14 +81,14 @@ CREATE TABLE teams (
 );
 
 -- Indexes for analytics performance
-CREATE INDEX idx_player_season_stats_player_season ON player_season_stats(player_id, season);
-CREATE INDEX idx_player_season_stats_season_week ON player_season_stats(season, week);
-CREATE INDEX idx_player_season_stats_position ON player_season_stats(position);
-CREATE INDEX idx_players_position_team ON players(position, team);
-CREATE INDEX idx_current_data_updated ON player_current_data(updated_at);
+CREATE INDEX IF NOT EXISTS idx_player_season_stats_player_season ON player_season_stats(player_id, season);
+CREATE INDEX IF NOT EXISTS idx_player_season_stats_season_week ON player_season_stats(season, week);
+CREATE INDEX IF NOT EXISTS idx_player_season_stats_position ON player_season_stats(position);
+CREATE INDEX IF NOT EXISTS idx_players_position_team ON players(position, team);
+CREATE INDEX IF NOT EXISTS idx_current_data_updated ON player_current_data(updated_at);
 
 -- Views for common analytics queries
-CREATE VIEW player_career_stats AS
+CREATE OR REPLACE VIEW player_career_stats AS
 SELECT 
     p.player_id,
     p.first_name,
@@ -104,7 +104,7 @@ FROM players p
 LEFT JOIN player_season_stats pss ON p.player_id = pss.player_id
 GROUP BY p.player_id, p.first_name, p.last_name, p.position, p.team;
 
-CREATE VIEW current_season_leaders AS
+CREATE OR REPLACE VIEW current_season_leaders AS
 SELECT 
     p.player_id,
     p.first_name || ' ' || p.last_name as player_name,
