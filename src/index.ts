@@ -1,5 +1,6 @@
 import 'dotenv/config';
 
+// eslint-disable-next-line no-console
 console.log('🚀 Starting MCP Sleeper Server...');
 import express from 'express';
 import cors from 'cors';
@@ -34,31 +35,38 @@ async function bootstrap() {
     // Create Express app
     const app = express();
 
+    // Trust proxy for Railway deployment (handles X-Forwarded-For headers)
+    app.set('trust proxy', true);
+
     // Apply compression middleware first
-    app.use(compression({
-      filter: (req, res) => {
-        // Don't compress responses with this request header
-        if (req.headers['x-no-compression']) {
-          return false;
-        }
-        // Fallback to standard filter function
-        return compression.filter(req, res);
-      },
-      level: 6, // Good balance between compression ratio and speed
-      threshold: 1024, // Only compress responses > 1KB
-    }));
+    app.use(
+      compression({
+        filter: (req, res) => {
+          // Don't compress responses with this request header
+          if (req.headers['x-no-compression']) {
+            return false;
+          }
+          // Fallback to standard filter function
+          return compression.filter(req, res);
+        },
+        level: 6, // Good balance between compression ratio and speed
+        threshold: 1024, // Only compress responses > 1KB
+      })
+    );
 
     // Apply security middleware with relaxed CSP for API docs
-    app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", "data:", "https:"],
+    app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+          },
         },
-      },
-    }));
+      })
+    );
     app.use(
       cors({
         origin: config.CORS_ORIGIN,
@@ -75,24 +83,26 @@ async function bootstrap() {
       })
     );
 
+    // eslint-disable-next-line no-console
     console.log('About to create server...');
     // Create and start server
     const server = createServer(app);
+    // eslint-disable-next-line no-console
     console.log('Server created successfully!');
 
     // Handle graceful shutdown
-    process.on('SIGTERM', () => gracefulShutdown(server));
-    process.on('SIGINT', () => gracefulShutdown(server));
+    process.on('SIGTERM', () => void gracefulShutdown(server));
+    process.on('SIGINT', () => void gracefulShutdown(server));
 
     // Handle uncaught errors
     process.on('uncaughtException', (error) => {
       logger.error('Uncaught Exception:', error);
-      gracefulShutdown(server);
+      void gracefulShutdown(server);
     });
 
     process.on('unhandledRejection', (reason, promise) => {
       logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-      gracefulShutdown(server);
+      void gracefulShutdown(server);
     });
 
     // Start server
@@ -103,7 +113,7 @@ async function bootstrap() {
       );
       logger.info(`🔧 Interactive docs available at http://localhost:${config.PORT}/docs`);
       logger.info(`🏃 Health check available at http://localhost:${config.PORT}/health`);
-      
+
       // All schedulers disabled for testing - server should work without them
       logger.info(`📊 Basic server running without cache schedulers`);
     });
@@ -114,4 +124,4 @@ async function bootstrap() {
 }
 
 // Start the application
-bootstrap();
+void bootstrap();
